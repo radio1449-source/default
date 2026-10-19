@@ -5,18 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>졸라맨 책상 대탈출</title>
 <style>
-  html,body{margin:0;height:100%;background:#222;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;user-select:none}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#9cc}
+  html,body{margin:0;height:100%;background:#222;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+  body{display:flex;align-items:flex-start;justify-content:center}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#9cc;margin-top:env(safe-area-inset-top)}
+  .btn{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom));width:min(38vw,170px);height:min(38vw,170px);max-height:34vh;border-radius:50%;border:4px solid #fff;color:#fff;font:bold 22px monospace;display:flex;align-items:center;justify-content:center;text-align:center;opacity:.8;box-shadow:0 5px 0 rgba(0,0,0,.45)}
+  .btn.on{opacity:1;transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.45)}
+  #bj{left:calc(16px + env(safe-area-inset-left));background:#3a8bd8}
+  #bs{right:calc(16px + env(safe-area-inset-right));background:#e0473a}
 </style>
 </head>
 <body>
 <canvas id="c" width="320" height="180"></canvas>
+<div class="btn" id="bj">점프<br>JUMP</div>
+<div class="btn" id="bs">발사<br>SHOOT</div>
 <script>
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const W = 320, H = 180, GY = 140;
 
 function fit() {
-  const s = Math.max(1, Math.floor(Math.min(innerWidth / W, innerHeight / H)));
+  const portrait = innerHeight > innerWidth;
+  let s = Math.min(innerWidth / W, (portrait ? innerHeight * 0.5 : innerHeight) / H);
+  if (s >= 2) s = Math.floor(s);
   cv.style.width = W * s + 'px'; cv.style.height = H * s + 'px';
 }
 addEventListener('resize', fit); fit();
@@ -65,14 +74,20 @@ addEventListener('keyup', e => keys[e.key] = false);
 const shootKey = () => keys.z || keys.x || keys.j || keys.Control || keys.Z || keys.X;
 
 const ptrs = new Map();
-cv.addEventListener('pointerdown', e => {
-  const r = cv.getBoundingClientRect(), x = (e.clientX - r.left) / r.width;
-  if (S.mode !== 'play') { begin(); return; }
-  if (x < 0.5) { jumpQueued = true; ptrs.set(e.pointerId, 'j'); }
-  else { ptrs.set(e.pointerId, 's'); }
-});
-const rel = e => ptrs.delete(e.pointerId);
-cv.addEventListener('pointerup', rel); cv.addEventListener('pointercancel', rel);
+const bj = document.getElementById('bj'), bs = document.getElementById('bs');
+function bind(el, kind) {
+  el.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (S.mode !== 'play') { begin(); return; }
+    ptrs.set(e.pointerId, kind); el.classList.add('on');
+    if (kind === 'j') jumpQueued = true;
+  });
+  const up = e => { ptrs.delete(e.pointerId); if (![...ptrs.values()].includes(kind)) el.classList.remove('on'); };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); el.addEventListener('pointerleave', up);
+}
+bind(bj, 'j'); bind(bs, 's');
+cv.addEventListener('pointerdown', () => { if (S.mode !== 'play') begin(); });
+document.addEventListener('contextmenu', e => e.preventDefault());
 
 // ---------- helpers ----------
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -346,7 +361,7 @@ function draw() {
   if (S.mode === 'title') overlay([
     ['졸라맨', 60, 24, '#fff'], ['책상 대탈출', 84, 14, '#fd3'],
     ['SPACE / TAP 시작', 118, 9, '#fff'],
-    ['점프: SPACE · ↑ · 화면 왼쪽  /  발사: Z · X · 화면 오른쪽', 136, 7, '#cde'],
+    ['점프: SPACE · ↑ · 파란 버튼   발사: Z · X · 빨간 버튼', 136, 7, '#cde'],
     ['커피를 마시면 연사!', 148, 7, '#fa0']
   ]);
   if (S.mode === 'over') overlay([
